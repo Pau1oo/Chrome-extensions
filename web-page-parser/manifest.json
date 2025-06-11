@@ -1,0 +1,10 @@
+{
+  "name": "Web-page parser",
+  "description": "This extension parses web pages.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "parser.html",
+    "default_icon": "parser.png"
+  }
+}
