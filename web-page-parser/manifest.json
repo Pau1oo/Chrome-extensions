@@ -3,6 +3,21 @@
   "description": "This extension parses web pages.",
   "version": "1.0",
   "manifest_version": 3,
+  "permissions": [
+    "identity",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "oauth2": {
+    "client_id": "715024650629-cfsu39i4nv5o83du5e7jovfdij63a0ia.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets"
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "images/parser-16.png",
     "24": "images/parser-24.png",
@@ -15,6 +30,14 @@
       "24": "images/parser-24.png",
       "32": "images/parser-32.png",
       "128": "images/parser-128.png"
+    },
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [ "<all_urls>" ],
+      "js": [ "content.js" ],
+      "run_at": "document_end"
     }
-  }
+  ]
 }
