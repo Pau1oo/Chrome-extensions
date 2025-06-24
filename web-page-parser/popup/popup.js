@@ -74,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const errorMsg = 'Ошибка: Введите URL/ID таблицы';
             log(LOG_LEVEL.ERROR, errorMsg);
             showStatus(errorMsg, false);
-            spreadsheetInput.focus();
             return;
         }
 
@@ -94,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 log(LOG_LEVEL.ERROR, chrome.runtime.lastError.message);
                 showStatus('Ошибка авторизации: ' + chrome.runtime.lastError.message, false);
             } else {
-                showStatus('Авторизация успешна', true);
+                showStatus('Авторизация прошла успешно', true);
             }
         });
     });

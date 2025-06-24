@@ -1,16 +1,21 @@
 {
-  "name": "Web-page parser",
-  "description": "This extension parses web pages.",
+  "name": "Realt.by parser",
+  "description": "This extension parses ads on realt.by and sends the data to a Google Sheets table.",
   "version": "1.0",
   "manifest_version": 3,
   "permissions": [
     "contextMenus",
     "activeTab",
     "identity",
-    "storage"
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.realt.by/*"
   ],
   "oauth2": {
-    "client_id": "715024650629-cfsu39i4nv5o83du5e7jovfdij63a0ia.apps.googleusercontent.com",
+    "client_id": "101166783378-o9rpg0qqmllh4tr01g21380tfd9avpt9.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/spreadsheets"
     ]
@@ -33,10 +38,5 @@
     },
     "default_popup": "popup/popup.html"
   },
-  "content_scripts": [
-    {
-      "matches": [ "*://realt.by/*" ],
-      "js": [ "content.js" ]
-    }
-  ]
+  "content_scripts": [ ]
 }
