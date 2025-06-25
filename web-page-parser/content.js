@@ -51,6 +51,35 @@ function isPropertyPage() {
     return window.location.href.includes('realt.by') && window.location.pathname.includes('/object/');
 }
 
+function extractAddress() {
+    try {
+        const addressElements = [...document.querySelectorAll(`a[href*="/sale/"]`)].filter(el => {
+            const text = el.textContent.trim();
+            return text;
+        });
+
+        if (addressElements.length === 0) return '-';
+
+        const addressParts = addressElements.map(el => {
+            return el.textContent
+                .trim()
+                .replace(/&nbsp;/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/^[,\s]+|[,\s]+$/g, '');
+        });
+
+        let fullAddress = addressParts.join(' ');
+
+        const addressPattern = /г\.\s[А-Яа-яёЁ-]+\s(?:ул\.|пер\.|просп\.)\s[А-Яа-яёЁ\s-]+?(?:\s\d+-[йя])?,\s*\d+/;
+        const addressMatch = fullAddress.match(addressPattern);
+
+        return addressMatch ? addressMatch[0].trim() : '-';
+    } catch (e) {
+        console.error('Error extracting full address:', e);
+        return '-';
+    }
+}
+
 function getTextContent(selector) {
     const el = document.querySelector(selector);
     return el ? el.textContent.trim() : '';
@@ -63,8 +92,8 @@ function getMapLink(coords) {
 
 async function addHeaders(spreadsheetId) {
     const headers = [
-        'Время добавления', 'Ссылка', 'Тип', 'Стоим. покупки', 'Стоим. ремонта', 'Итог. стоимость',
-        'Площадь', 'Цена за м²', 'Стоим. аренды', 'Окупаемость (лет)', 'Примечание', 'Местоположение'
+        'Время добавления', 'Ссылка', 'Тип', 'Стоим. покупки, USD', 'Стоим. ремонта, USD', 'Итог. стоимость, USD',
+        'Площадь, м²', 'Цена за м², USD', 'Арендная ставка, USD', 'Стоимость аренды, USD', 'Окупаемость, лет', 'Примечание', 'Адрес', 'Местоположение'
     ];
     await chrome.runtime.sendMessage({
         action: 'sendToSheets',
@@ -91,20 +120,20 @@ async function sendToSheets(data) {
             data.type,
             data.purchasePrice,
             '???',
-            '=ЕСЛИОШИБКА(ДВССЫЛ("D"&СТРОКА()) + ДВССЫЛ("E"&СТРОКА()); "Не рассчитано")',
+            '=ЕСЛИОШИБКА(ДВССЫЛ("D"&СТРОКА()) + ДВССЫЛ("E"&СТРОКА()); "-")',
             data.area,
             '=ЕСЛИОШИБКА(ОКРУГЛ(ДВССЫЛ("D"&СТРОКА()) / ДВССЫЛ("G"&СТРОКА()); 2); "-")',
-            data.rentPrice,
-            'Окупаемость (лет)',
+            '???',
+            '=ЕСЛИОШИБКА(ОКРУГЛ(ДВССЫЛ("G"&СТРОКА()) * ДВССЫЛ("I"&СТРОКА()) - ДВССЫЛ("G"&СТРОКА()) * ДВССЫЛ("I"&СТРОКА()) * 0,13; 2); "-")',
+            '=ЕСЛИОШИБКА(ОКРУГЛ(ДВССЫЛ("F"&СТРОКА()) / ДВССЫЛ("J"&СТРОКА()) / 12); "-")',
             data.description,
+            data.address,
             getMapLink(data.coordinates)
         ]
     });
 
-    if (response.success) {
-        alert('Данные успешно добавлены!');
-        return true;
-    } else {
+    if (response.success) { return true; }
+    else {
         console.error('Ошибка:', response.error);
         alert(`Ошибка: ${response.error}`);
         return false;
@@ -125,7 +154,8 @@ function extractPropertyData() {
         area: extractArea(),
         rentPrice: extractPrice('rent'),
         description: extractDescription(),
-        coordinates: getTextContent('p.inline-flex')
+        coordinates: getTextContent('p.inline-flex'),
+        address: extractAddress()
     };
 }
 

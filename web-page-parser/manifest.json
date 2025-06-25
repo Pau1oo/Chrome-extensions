@@ -9,7 +9,8 @@
     "identity",
     "storage",
     "scripting",
-    "tabs"
+    "tabs",
+    "notifications"
   ],
   "host_permissions": [
     "*://*.realt.by/*"

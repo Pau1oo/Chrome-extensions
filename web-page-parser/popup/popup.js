@@ -14,6 +14,11 @@ function log(level, message, data = null) {
     }
 }
 
+const spreadsheetInput = document.getElementById('spreadsheetId');
+const saveBtn = document.getElementById('saveBtn');
+const authBtn = document.getElementById('authBtn');
+const statusDiv = document.getElementById('status');
+
 document.addEventListener('DOMContentLoaded', function () {
 
     log(LOG_LEVEL.INFO, 'Popup initialized');
@@ -51,18 +56,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Если не удалось извлечь ID, возвращаем исходную строку
         return url;
     }
 
-    const spreadsheetInput = document.getElementById('spreadsheetId');
-    const saveBtn = document.getElementById('saveBtn');
-    const authBtn = document.getElementById('authBtn');
-    const statusDiv = document.getElementById('status');
-
     loadSettings();
 
-    // Сохранение настроек
     saveBtn.addEventListener('click', function () {
         log(LOG_LEVEL.INFO, 'Save button clicked');
 
@@ -84,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Авторизация в Google
     authBtn.addEventListener('click', function () {
         log(LOG_LEVEL.INFO, 'Auth button clicked');
 

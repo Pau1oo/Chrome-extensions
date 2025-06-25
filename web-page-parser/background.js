@@ -72,6 +72,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const result = await handleSendToSheets(request);
                 log(LOG_LEVEL.DEBUG, 'sendToSheets resolved', result);
                 sendResponse({ success: result });
+
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: chrome.runtime.getURL('images/parser-128.png'),
+                    title: 'Realt.by Parser',
+                    message: 'Объявление успешно сохранено!',
+                });
+
             } catch (error) {
                 log(LOG_LEVEL.ERROR, 'sendToSheets error', error);
                 sendResponse({ success: false, error: error.message });
@@ -85,10 +93,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 
 async function checkSheetData(request) {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${request.spreadsheetId}/values/A1`;
-
     const token = await getAuthToken();
-    const response = await fetch(url, {
+    const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${request.spreadsheetId}/values/A1`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
 
