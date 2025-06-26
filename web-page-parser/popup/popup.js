@@ -5,26 +5,23 @@
     ERROR: 3
 };
 let CURRENT_LOG_LEVEL = LOG_LEVEL.DEBUG;
-
-function log(level, message, data = null) {
-    if (level >= CURRENT_LOG_LEVEL) {
-        const timestamp = new Date().toISOString();
-        const levelName = Object.keys(LOG_LEVEL).find(k => LOG_LEVEL[k] === level);
-        console.log(`[${timestamp}] [${levelName}] ${message}`, data || '');
-    }
-}
-
 const spreadsheetInput = document.getElementById('spreadsheetId');
 const saveBtn = document.getElementById('saveBtn');
 const authBtn = document.getElementById('authBtn');
 const statusDiv = document.getElementById('status');
 
+function log(level, message, data = null) {
+    if (level >= CURRENT_LOG_LEVEL) {
+        const timestamp = new Date().toLocaleString('ru-RU');
+        const levelName = Object.keys(LOG_LEVEL).find(k => LOG_LEVEL[k] === level);
+        console.log(`[${timestamp}] [${levelName}] ${message}`, data || '');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-
-    log(LOG_LEVEL.INFO, 'Popup initialized');
-
+    log(LOG_LEVEL.INFO, 'Popup UI initialized');
     function loadSettings() {
-        log(LOG_LEVEL.DEBUG, 'Loading settings from storage');
+        log(LOG_LEVEL.DEBUG, 'Loading settings from chrome.storage');
         chrome.storage.local.get(['spreadsheetId'], (data) => {
             log(LOG_LEVEL.DEBUG, 'Settings loaded from storage', data);
             if (data.spreadsheetId) spreadsheetInput.value = data.spreadsheetId;
@@ -62,10 +59,8 @@ document.addEventListener('DOMContentLoaded', function () {
     loadSettings();
 
     saveBtn.addEventListener('click', function () {
-        log(LOG_LEVEL.INFO, 'Save button clicked');
-
+        log(LOG_LEVEL.INFO, 'User clicked save button');
         const spreadsheetId = extractSpreadsheetId(spreadsheetInput.value.trim());
-
         log(LOG_LEVEL.DEBUG, 'Input values', { spreadsheetId });
 
         if (!spreadsheetId) {
@@ -75,21 +70,20 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        log(LOG_LEVEL.DEBUG, 'Saving settings to storage');
-
         chrome.storage.local.set({ spreadsheetId }, function () {
+            log(LOG_LEVEL.INFO, 'Settings saved successfully');
             showStatus('Настройки сохранены', true);
         });
     });
 
     authBtn.addEventListener('click', function () {
-        log(LOG_LEVEL.INFO, 'Auth button clicked');
-
+        log(LOG_LEVEL.INFO, 'User initiated authentication');
         chrome.identity.getAuthToken({ interactive: true }, function (token) {
             if (chrome.runtime.lastError) {
-                log(LOG_LEVEL.ERROR, chrome.runtime.lastError.message);
+                log(LOG_LEVEL.ERROR, 'Authentication failed', chrome.runtime.lastError);
                 showStatus('Ошибка авторизации: ' + chrome.runtime.lastError.message, false);
             } else {
+                log(LOG_LEVEL.INFO, 'User authenticated successfully');
                 showStatus('Авторизация прошла успешно', true);
             }
         });

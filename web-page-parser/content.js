@@ -8,7 +8,7 @@ let CURRENT_LOG_LEVEL = LOG_LEVEL.DEBUG;
 
 function log(level, message, data = null) {
     if (level >= CURRENT_LOG_LEVEL) {
-        const timestamp = new Date().toISOString();
+        const timestamp = new Date().toLocaleString('ru-RU');
         const levelName = Object.keys(LOG_LEVEL).find(k => LOG_LEVEL[k] === level);
         console.log(`[${timestamp}] [${levelName}] ${message}`, data || '');
     }
@@ -18,20 +18,20 @@ function extractDescription() {
     const noteHeader = [...document.querySelectorAll('h3')].find(h3 =>
         h3.textContent.trim() === 'Описание' || h3.textContent.trim() === 'Примечание'
     );
-    if (!noteHeader) return '';
+    if (!noteHeader) return '-';
     const descriptionContainer = noteHeader.nextElementSibling;
-    if (!descriptionContainer) return '';
+    if (!descriptionContainer) return '-';
     const clone = descriptionContainer.cloneNode(true);
     clone.querySelectorAll('button').forEach(btn => btn.remove());
-    return clone.textContent.trim();
+    return clone.textContent.trim() || '-';
 }
 
 function extractPrice(typeOfPrice) {
     try {
-        let noteHeader = document.querySelector('h2').textContent;
+        let noteHeader = document.querySelector('div:has(h2) + span')?.textContent.trim();
         let type;
-        if (noteHeader.includes('р./м²') || noteHeader.includes('р./мес.')) type = 'rent';
-        else if (noteHeader.includes('р.')) type = 'purchase';
+        if (noteHeader.includes('$/м²') || noteHeader.includes('$/мес.')) type = 'rent';
+        else if (noteHeader.includes('$')) type = 'purchase';
         noteHeader = noteHeader.replace(/[^\d-]/g, '');
         return typeOfPrice === type ? noteHeader : '-';
     } catch {
@@ -53,27 +53,15 @@ function isPropertyPage() {
 
 function extractAddress() {
     try {
-        const addressElements = [...document.querySelectorAll(`a[href*="/sale/"]`)].filter(el => {
-            const text = el.textContent.trim();
-            return text;
-        });
+        const addressElements = [...document.querySelectorAll('ul.text-basic > li:first-child a')]
+            .map(a => a.textContent
+                .replace(/&nbsp;|[\s,]+/g, ' ').trim()
+            );
 
         if (addressElements.length === 0) return '-';
 
-        const addressParts = addressElements.map(el => {
-            return el.textContent
-                .trim()
-                .replace(/&nbsp;/g, ' ')
-                .replace(/\s+/g, ' ')
-                .replace(/^[,\s]+|[,\s]+$/g, '');
-        });
-
-        let fullAddress = addressParts.join(' ');
-
-        const addressPattern = /г\.\s[А-Яа-яёЁ-]+\s(?:ул\.|пер\.|просп\.)\s[А-Яа-яёЁ\s-]+?(?:\s\d+-[йя])?,\s*\d+/;
-        const addressMatch = fullAddress.match(addressPattern);
-
-        return addressMatch ? addressMatch[0].trim() : '-';
+        let fullAddress = addressElements.join(', ');
+        return fullAddress;
     } catch (e) {
         console.error('Error extracting full address:', e);
         return '-';
@@ -90,30 +78,22 @@ function getMapLink(coords) {
     return `https://yandex.ru/maps/?ll=${lng},${lat}&z=15&pt=${lng},${lat}`;
 }
 
-async function addHeaders(spreadsheetId) {
+async function addHeaders() {
     const headers = [
         'Время добавления', 'Ссылка', 'Тип', 'Стоим. покупки, USD', 'Стоим. ремонта, USD', 'Итог. стоимость, USD',
-        'Площадь, м²', 'Цена за м², USD', 'Арендная ставка, USD', 'Стоимость аренды, USD', 'Окупаемость, лет', 'Примечание', 'Адрес', 'Местоположение'
+        'Площадь, м²', 'Цена за м², USD', 'Арендная ставка, USD', 'Стоимость аренды, USD', 'Окупаемость, лет', 'Примечание', 'Адрес'
     ];
     await chrome.runtime.sendMessage({
         action: 'sendToSheets',
-        spreadsheetId,
         data: headers
     });
 }
 
 async function sendToSheets(data) {
-    const result = await chrome.storage.local.get(['spreadsheetId']);
-    const spreadsheetId = result.spreadsheetId;
-
-    if (!spreadsheetId) {
-        alert('ID таблицы не задан. Укажите его в настройках.');
-        return;
-    }
+    let addressUrl = getMapLink(data.coordinates);
 
     const response = await chrome.runtime.sendMessage({
         action: 'sendToSheets',
-        spreadsheetId,
         data: [
             data.timestamp,
             data.url,
@@ -124,11 +104,10 @@ async function sendToSheets(data) {
             data.area,
             '=ЕСЛИОШИБКА(ОКРУГЛ(ДВССЫЛ("D"&СТРОКА()) / ДВССЫЛ("G"&СТРОКА()); 2); "-")',
             '???',
-            '=ЕСЛИОШИБКА(ОКРУГЛ(ДВССЫЛ("G"&СТРОКА()) * ДВССЫЛ("I"&СТРОКА()) - ДВССЫЛ("G"&СТРОКА()) * ДВССЫЛ("I"&СТРОКА()) * 0,13; 2); "-")',
+            '=ЕСЛИОШИБКА(ОКРУГЛ(ДВССЫЛ("G"&СТРОКА()) * ДВССЫЛ("I"&СТРОКА()) * 0,87; 2); "-")',
             '=ЕСЛИОШИБКА(ОКРУГЛ(ДВССЫЛ("F"&СТРОКА()) / ДВССЫЛ("J"&СТРОКА()) / 12); "-")',
             data.description,
-            data.address,
-            getMapLink(data.coordinates)
+            `=ГИПЕРССЫЛКА("${addressUrl}"; "${data.address}")`
         ]
     });
 
@@ -142,44 +121,61 @@ async function sendToSheets(data) {
 
 function extractPropertyData() {
     if (!isPropertyPage()) {
-        alert('Это не страница объявления на realt.by');
+        log(LOG_LEVEL.WARN, 'Page is not a realt.by property page');
+        alert('Это не страница объявления Realt.by');
         return null;
     }
 
-    return {
+    log(LOG_LEVEL.DEBUG, 'Starting property data extraction');
+    const data = {
         timestamp: new Date().toLocaleString('ru-RU'),
         url: window.location.href,
-        type: [...document.querySelectorAll('p')].find(el => el.textContent.trim() === 'Тип')?.previousElementSibling.textContent,
+        type: [...document.querySelectorAll('p')].find(el => el.textContent.trim() === 'Тип')?.previousElementSibling.textContent || '-',
         purchasePrice: extractPrice('purchase'),
         area: extractArea(),
-        rentPrice: extractPrice('rent'),
         description: extractDescription(),
         coordinates: getTextContent('p.inline-flex'),
         address: extractAddress()
     };
+
+    log(LOG_LEVEL.DEBUG, 'Property data extracted', {
+        type: data.type,
+        price: data.purchasePrice,
+        hasAddress: data.address !== '-'
+    });
+
+    return data;
 }
 
 async function main() {
-    const result = await chrome.storage.local.get(['spreadsheetId']);
-    const spreadsheetId = result.spreadsheetId;
+    log(LOG_LEVEL.INFO, 'Content script started execution');
 
-    if (!spreadsheetId) {
-        alert('ID таблицы не задан. Укажите его в настройках.');
-        return;
-    }
+    const check = await chrome.runtime.sendMessage({ action: 'checkSheet' });
+    log(LOG_LEVEL.DEBUG, 'Sheet check result', { isValid: check.success });
 
-    const check = await chrome.runtime.sendMessage({ action: 'checkSheet', spreadsheetId });
     if (!check.success) {
-        await addHeaders(spreadsheetId);
+        log(LOG_LEVEL.INFO, 'Adding headers to new sheet');
+        await addHeaders();
     }
 
     const propertyData = extractPropertyData();
     if (propertyData) {
-        sendToSheets(propertyData).catch(err => {
-            console.error('Ошибка при отправке данных:', err);
-            alert('Ошибка при отправке в Google Sheets');
+        log(LOG_LEVEL.DEBUG, 'Extracted property data', {
+            type: propertyData.type,
+            price: propertyData.purchasePrice,
+            area: propertyData.area
         });
+
+        try {
+            await sendToSheets(propertyData);
+            log(LOG_LEVEL.INFO, 'Data successfully sent to Sheets');
+        } catch (err) {
+            log(LOG_LEVEL.ERROR, 'Failed to send data to Sheets', err);
+            alert('Error sending to Google Sheets');
+        }
         chrome.runtime.sendMessage({ action: 'complete' });
+    } else {
+        log(LOG_LEVEL.WARN, 'Not a property page or extraction failed');
     }
 }
 
