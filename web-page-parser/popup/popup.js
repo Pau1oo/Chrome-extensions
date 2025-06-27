@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     loadSettings((updateAvailable, latestVersion) => {
         if (updateAvailable) {
+            log(LOG_LEVEL.INFO, 'update is available')
             const updateBtn = document.getElementById('updateBtn');
             if (updateBtn) {
                 updateBtn.textContent = `Обновить до v${latestVersion}`;
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (updateAvailable && latestVersion) {
         updateBtn.classList.remove('hidden');
+        log(LOG_LEVEL.INFO, 'появление кнопки обнов')
         newVersionSpan.textContent = latestVersion;
 
         updateBtn.addEventListener('click', () => {

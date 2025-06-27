@@ -1,7 +1,7 @@
 {
   "name": "Realt.by parser",
   "description": "This extension parses ads on realt.by and sends the data to a Google Sheets table.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "manifest_version": 3,
   "permissions": [
     "contextMenus",
