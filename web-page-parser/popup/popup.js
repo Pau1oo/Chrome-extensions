@@ -26,7 +26,14 @@ function log(level, message, data = null) {
 document.addEventListener('DOMContentLoaded', function () {
     log(LOG_LEVEL.INFO, 'Popup UI initialized');
 
-    loadSettings(updateAvailable, latestVersion);
+    loadSettings((updateAvailable, latestVersion) => {
+        if (updateAvailable) {
+            const updateBtn = document.getElementById('updateBtn');
+            if (updateBtn) {
+                updateBtn.textContent = `Обновить до v${latestVersion}`;
+            }
+        }
+    });
 
     const currentVersion = chrome.runtime.getManifest().version;
     versionSpan.textContent = currentVersion;
