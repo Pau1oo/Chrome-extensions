@@ -242,7 +242,7 @@ async function checkUpdates() {
         const { version: latestVersion } = await response.json();
         const currentVersion = chrome.runtime.getManifest().version;
 
-        if (latestVersion > currentVersion) {
+        if (latestVersion != currentVersion) {
             await chrome.storage.local.set({
                 updateAvailable: true,
                 latestVersion
