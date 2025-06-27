@@ -12,8 +12,6 @@ const updateBtn = document.getElementById('updateBtn');
 const statusDiv = document.getElementById('status');
 const versionSpan = document.getElementById('version');
 const newVersionSpan = document.getElementById('newVersion');
-let updateAvailable = false;
-let latestVersion = null;
 
 function log(level, message, data = null) {
     if (level >= CURRENT_LOG_LEVEL) {
@@ -23,31 +21,13 @@ function log(level, message, data = null) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     log(LOG_LEVEL.INFO, 'Popup UI initialized');
+    await loadSettings();
 
-    loadSettings((updateAvailable, latestVersion) => {
-        if (updateAvailable) {
-            log(LOG_LEVEL.INFO, 'update is available')
-            const updateBtn = document.getElementById('updateBtn');
-            if (updateBtn) {
-                updateBtn.textContent = `Обновить до v${latestVersion}`;
-            }
-        }
+    updateBtn.addEventListener('click', () => {
+        chrome.tabs.create({ url: appState.downloadUrl });
     });
-
-    const currentVersion = chrome.runtime.getManifest().version;
-    versionSpan.textContent = currentVersion;
-
-    if (updateAvailable) {
-        updateBtn.classList.remove('hidden');
-        log(LOG_LEVEL.INFO, 'появление кнопки обнов')
-        newVersionSpan.textContent = latestVersion;
-
-        updateBtn.addEventListener('click', () => {
-            chrome.tabs.create({ url: download_url });
-        });
-    }
 
     saveBtn.addEventListener('click', function () {
         log(LOG_LEVEL.INFO, 'User clicked save button');
@@ -124,11 +104,20 @@ function extractSpreadsheetId(url) {
     return url;
 }
 
-function loadSettings(callback) {
+async function loadSettings() {
     log(LOG_LEVEL.DEBUG, 'Loading settings from chrome.storage');
-    chrome.storage.local.get(['spreadsheetId', 'updateAvailable', 'latestVersion'], (data) => {
+    chrome.storage.local.get(['spreadsheetId'], (data) => {
         log(LOG_LEVEL.DEBUG, 'Settings loaded from storage', data);
-        callback(data.updateAvailable, data.latestVersion);
         if (data.spreadsheetId) spreadsheetInput.value = data.spreadsheetId;
     });
+
+    const appState = await chrome.runtime.sendMessage({ type: 'get-update-status' });
+    log(LOG_LEVEL.DEBUG, 'get response from background, appState:', appState);
+
+    if (appState.updateAvailable) {
+        updateBtn.hidden = false;
+        updateBtn.textContent = `Обновить до v${appState.latestVersion}`;
+    }
+
+    versionSpan.textContent = chrome.runtime.getManifest().version;
 }

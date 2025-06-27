@@ -9,6 +9,11 @@ let cachedToken = null;
 let tokenRefreshInProgress = false;
 let cachedSettings = null;
 const REPO = "Pau1oo/Chrome-extensions";
+const appState = {
+    updateAvailable: false,
+    latestVersion: '',
+    downloadUrl: ''
+};
 
 function log(level, message, data = null) {
     if (level >= CURRENT_LOG_LEVEL) {
@@ -27,14 +32,20 @@ async function getSettings() {
     return cachedSettings;
 }
 
-checkUpdates();
-
-chrome.alarms.create("checkUpdates", { periodInMinutes: 1 });
+chrome.alarms.create("check-updates", { periodInMinutes: 1 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === "checkUpdates") checkUpdates();
+    if (alarm.name === "check-updates") checkUpdates();
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'get-update-status') {
+        log(LOG_LEVEL.DEBUG, 'onMessage get-update-status');
+        sendResponse(appState);
+        log(LOG_LEVEL.DEBUG, 'sendResponse(appState)', appState);
+    }
+});
+
+chrome.runtime.onInstalled.addListener(async () => {
     log(LOG_LEVEL.INFO, 'Extension installed, creating context menu');
     chrome.contextMenus.create({
         id: "parseRealtBy",
@@ -42,6 +53,7 @@ chrome.runtime.onInstalled.addListener(() => {
         contexts: ["link"],
         documentUrlPatterns: ["*://realt.by/*"]
     });
+    await checkUpdates();
 });
 
 chrome.storage.onChanged.addListener((changes) => {
@@ -239,22 +251,23 @@ function verifyToken(token) {
 async function checkUpdates() {
     try {
         const response = await fetch(`https://raw.githubusercontent.com/${REPO}/main/web-page-parser/version.json`);
-        const { version: latestVersion } = await response.json();
-        const currentVersion = chrome.runtime.getManifest().version;
 
-        if (latestVersion != currentVersion) {
+        const { version: latestVersion, download_url: downloadUrl } = await response.json();
+        //const latestVersion = '1.0.7'; 
+        log(LOG_LEVEL.DEBUG, 'checkUpdates latestVersion =', latestVersion);
+
+        const currentVersion = chrome.runtime.getManifest().version;
+        log(LOG_LEVEL.DEBUG, 'checkUpdates currentVersion =', currentVersion);
+
+        if (latestVersion > currentVersion) {
+            appState.updateAvailable = true;
+            appState.latestVersion = latestVersion;
+
             await chrome.storage.local.set({
                 updateAvailable: true,
-                latestVersion
+                latestVersion,
+                downloadUrl
             });
-/*
-            // Можно отправить уведомление
-            chrome.notifications.create("update", {
-                title: "Доступно обновление!",
-                message: `Нажмите, чтобы обновить до v${latestVersion}`,
-                iconUrl: "icon.png",
-                type: "basic"
-            });*/
         }
     } catch (error) {
         log(LOG_LEVEL.ERROR, 'Check updates error:', error.message);
