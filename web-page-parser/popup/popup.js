@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const currentVersion = chrome.runtime.getManifest().version;
     versionSpan.textContent = currentVersion;
 
-    if (updateAvailable && latestVersion) {
+    if (updateAvailable) {
         updateBtn.classList.remove('hidden');
         log(LOG_LEVEL.INFO, 'появление кнопки обнов')
         newVersionSpan.textContent = latestVersion;
