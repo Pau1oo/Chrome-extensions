@@ -11,7 +11,10 @@
 
         <div class="header">
             <img src="/images/parser-128.png" alt="Parser Icon" class="icon">
-            <h1>Realt.by Parser</h1>
+            <h1>
+                Realt.by Parser
+                <label id="version" style="font-size:10px">1.0.0</label>
+            </h1>
         </div>
 
         <div class="form-group">
@@ -25,6 +28,10 @@
 
         <button id="authBtn" class="btn-primary">
             <span class="btn-text">Авторизоваться в Google</span>
+        </button>
+
+        <button id="updateBtn" class="btn-primary" style="display: none">
+            Обновить до v<span id="newVersion"></span>
         </button>
 
         <div id="status" class="status hidden">

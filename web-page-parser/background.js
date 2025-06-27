@@ -8,6 +8,7 @@ let CURRENT_LOG_LEVEL = LOG_LEVEL.DEBUG;
 let cachedToken = null;
 let tokenRefreshInProgress = false;
 let cachedSettings = null;
+const REPO = "Pau1oo/Chrome-extensions";
 
 function log(level, message, data = null) {
     if (level >= CURRENT_LOG_LEVEL) {
@@ -25,6 +26,13 @@ async function getSettings() {
     }
     return cachedSettings;
 }
+
+checkUpdates();
+
+chrome.alarms.create("checkUpdates", { periodInMinutes: 1 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === "checkUpdates") checkUpdates();
+});
 
 chrome.runtime.onInstalled.addListener(() => {
     log(LOG_LEVEL.INFO, 'Extension installed, creating context menu');
@@ -226,4 +234,29 @@ function verifyToken(token) {
             log(LOG_LEVEL.ERROR, 'Token verification error', error);
             return false;
         });
+}
+
+async function checkUpdates() {
+    try {
+        const response = await fetch(`https://raw.githubusercontent.com/${REPO}/main/version.json`);
+        const { version: latestVersion } = await response.json();
+        const currentVersion = chrome.runtime.getManifest().version;
+
+        if (latestVersion > currentVersion) {
+            await chrome.storage.local.set({
+                updateAvailable: true,
+                latestVersion
+            });
+/*
+            // Можно отправить уведомление
+            chrome.notifications.create("update", {
+                title: "Доступно обновление!",
+                message: `Нажмите, чтобы обновить до v${latestVersion}`,
+                iconUrl: "icon.png",
+                type: "basic"
+            });*/
+        }
+    } catch (error) {
+        log(LOG_LEVEL.ERROR, 'Check updates error');
+    }
 }

@@ -8,7 +8,10 @@ let CURRENT_LOG_LEVEL = LOG_LEVEL.DEBUG;
 const spreadsheetInput = document.getElementById('spreadsheetId');
 const saveBtn = document.getElementById('saveBtn');
 const authBtn = document.getElementById('authBtn');
+const updateBtn = document.getElementById('updateBtn');
 const statusDiv = document.getElementById('status');
+const versionSpan = document.getElementById('version');
+const newVersionSpan = document.getElementById('newVersion');
 
 function log(level, message, data = null) {
     if (level >= CURRENT_LOG_LEVEL) {
@@ -20,40 +23,19 @@ function log(level, message, data = null) {
 
 document.addEventListener('DOMContentLoaded', function () {
     log(LOG_LEVEL.INFO, 'Popup UI initialized');
-    function loadSettings() {
-        log(LOG_LEVEL.DEBUG, 'Loading settings from chrome.storage');
-        chrome.storage.local.get(['spreadsheetId'], (data) => {
-            log(LOG_LEVEL.DEBUG, 'Settings loaded from storage', data);
-            if (data.spreadsheetId) spreadsheetInput.value = data.spreadsheetId;
+
+    const currentVersion = chrome.runtime.getManifest().version;
+    versionSpan.textContent = currentVersion;
+
+    const { updateAvailable, latestVersion } = await chrome.storage.local.get(['updateAvailable', 'latestVersion']);
+
+    if (updateAvailable && latestVersion) {
+        updateBtn.classList.remove('hidden');
+        newVersionSpan.textContent = latestVersion;
+
+        updateBtn.addEventListener('click', () => {
+            chrome.tabs.create({ url: download_url });
         });
-    }
-
-    function extractSpreadsheetId(url) {
-        // Проверяем, является ли входная строка уже ID (состоит из букв, цифр и некоторых символов)
-        if (/^[\w-]{44,}$/.test(url)) {
-            return url;
-        }
-
-        // Пытаемся извлечь ID из различных форматов URL
-        const patterns = [
-            // Формат: https://docs.google.com/spreadsheets/d/{ID}/edit...
-            /\/spreadsheets\/d\/([\w-]{44,})(?:\/|$)/,
-            // Формат: https://docs.google.com/spreadsheets/d/{ID}/edit...
-            /\/d\/([\w-]{44,})(?:\/|$)/,
-            // Формат: https://docs.google.com/open?id={ID}
-            /[?&]id=([\w-]{44,})(?:&|$)/,
-            // Формат: https://docs.google.com/a/domain.com/spreadsheets/d/{ID}/edit...
-            /\/a\/[^\/]+\/spreadsheets\/d\/([\w-]{44,})(?:\/|$)/
-        ];
-
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) {
-                return match[1];
-            }
-        }
-
-        return url;
     }
 
     loadSettings();
@@ -88,19 +70,55 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+});
 
-    function showStatus(message, isSuccess) {
-        log(LOG_LEVEL.INFO, 'Status update', { message, isSuccess });
-        statusDiv.textContent = message;
-        statusDiv.className = 'status ' + (isSuccess ? 'success' : 'error');
-        statusDiv.style.display = 'block';
+function showStatus(message, isSuccess) {
+    log(LOG_LEVEL.INFO, 'Status update', { message, isSuccess });
+    statusDiv.textContent = message;
+    statusDiv.className = 'status ' + (isSuccess ? 'success' : 'error');
+    statusDiv.style.display = 'block';
 
-        if (isSuccess) {
-            setTimeout(() => {
-                if (statusDiv.textContent === message) {
-                    statusDiv.style.display = 'none';
-                }
-            }, 5000);
+    if (isSuccess) {
+        setTimeout(() => {
+            if (statusDiv.textContent === message) {
+                statusDiv.style.display = 'none';
+            }
+        }, 5000);
+    }
+}
+
+function extractSpreadsheetId(url) {
+    // Проверяем, является ли входная строка уже ID (состоит из букв, цифр и некоторых символов)
+    if (/^[\w-]{44,}$/.test(url)) {
+        return url;
+    }
+
+    // Пытаемся извлечь ID из различных форматов URL
+    const patterns = [
+        // Формат: https://docs.google.com/spreadsheets/d/{ID}/edit...
+        /\/spreadsheets\/d\/([\w-]{44,})(?:\/|$)/,
+        // Формат: https://docs.google.com/spreadsheets/d/{ID}/edit...
+        /\/d\/([\w-]{44,})(?:\/|$)/,
+        // Формат: https://docs.google.com/open?id={ID}
+        /[?&]id=([\w-]{44,})(?:&|$)/,
+        // Формат: https://docs.google.com/a/domain.com/spreadsheets/d/{ID}/edit...
+        /\/a\/[^\/]+\/spreadsheets\/d\/([\w-]{44,})(?:\/|$)/
+    ];
+
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
         }
     }
-});
+
+    return url;
+}
+
+function loadSettings() {
+    log(LOG_LEVEL.DEBUG, 'Loading settings from chrome.storage');
+    chrome.storage.local.get(['spreadsheetId'], (data) => {
+        log(LOG_LEVEL.DEBUG, 'Settings loaded from storage', data);
+        if (data.spreadsheetId) spreadsheetInput.value = data.spreadsheetId;
+    });
+}
