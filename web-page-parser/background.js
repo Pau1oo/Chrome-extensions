@@ -238,7 +238,7 @@ function verifyToken(token) {
 
 async function checkUpdates() {
     try {
-        const response = await fetch(`https://raw.githubusercontent.com/${REPO}/main/version.json`);
+        const response = await fetch(`https://raw.githubusercontent.com/${REPO}/main/web-page-parser/version.json`);
         const { version: latestVersion } = await response.json();
         const currentVersion = chrome.runtime.getManifest().version;
 
@@ -257,6 +257,6 @@ async function checkUpdates() {
             });*/
         }
     } catch (error) {
-        log(LOG_LEVEL.ERROR, 'Check updates error');
+        log(LOG_LEVEL.ERROR, 'Check updates error:', error.message);
     }
 }

@@ -12,6 +12,8 @@ const updateBtn = document.getElementById('updateBtn');
 const statusDiv = document.getElementById('status');
 const versionSpan = document.getElementById('version');
 const newVersionSpan = document.getElementById('newVersion');
+let updateAvailable = false;
+let latestVersion = null;
 
 function log(level, message, data = null) {
     if (level >= CURRENT_LOG_LEVEL) {
@@ -24,10 +26,10 @@ function log(level, message, data = null) {
 document.addEventListener('DOMContentLoaded', function () {
     log(LOG_LEVEL.INFO, 'Popup UI initialized');
 
+    loadSettings(updateAvailable, latestVersion);
+
     const currentVersion = chrome.runtime.getManifest().version;
     versionSpan.textContent = currentVersion;
-
-    const { updateAvailable, latestVersion } = await chrome.storage.local.get(['updateAvailable', 'latestVersion']);
 
     if (updateAvailable && latestVersion) {
         updateBtn.classList.remove('hidden');
@@ -37,8 +39,6 @@ document.addEventListener('DOMContentLoaded', function () {
             chrome.tabs.create({ url: download_url });
         });
     }
-
-    loadSettings();
 
     saveBtn.addEventListener('click', function () {
         log(LOG_LEVEL.INFO, 'User clicked save button');
@@ -115,10 +115,11 @@ function extractSpreadsheetId(url) {
     return url;
 }
 
-function loadSettings() {
+function loadSettings(callback) {
     log(LOG_LEVEL.DEBUG, 'Loading settings from chrome.storage');
-    chrome.storage.local.get(['spreadsheetId'], (data) => {
+    chrome.storage.local.get(['spreadsheetId', 'updateAvailable', 'latestVersion'], (data) => {
         log(LOG_LEVEL.DEBUG, 'Settings loaded from storage', data);
+        callback(data.updateAvailable, data.latestVersion);
         if (data.spreadsheetId) spreadsheetInput.value = data.spreadsheetId;
     });
 }
